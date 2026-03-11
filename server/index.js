@@ -7,6 +7,7 @@ import axios from "axios";
 import FormData from "form-data";
 import fs from "fs";
 import path from "path";
+import os from "os";
 import { fileURLToPath } from "url";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -39,14 +40,9 @@ const WHISPER_URL = `${AZURE_ENDPOINT}/openai/deployments/${AZURE_DEPLOYMENT}/au
 app.use(cors());
 app.use(express.json());
 
-// ── File upload config ─────────────────────────────────────────────────────
-const uploadsDir = path.join(__dirname, "uploads");
-if (!fs.existsSync(uploadsDir)) {
-    fs.mkdirSync(uploadsDir, { recursive: true });
-}
-
+// Vercel only allows writes to /tmp. os.tmpdir() works everywhere.
 const storage = multer.diskStorage({
-    destination: (req, file, cb) => cb(null, uploadsDir),
+    destination: (req, file, cb) => cb(null, os.tmpdir()),
     filename: (req, file, cb) => {
         const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
         cb(null, uniqueSuffix + path.extname(file.originalname));
@@ -312,3 +308,12 @@ app.listen(PORT, () => {
         console.log(`   GPT polish: disabled (set AZURE_OPENAI_GPT_DEPLOYMENT to enable)`);
     }
 });
+
+if (process.env.NODE_ENV === "production") {
+    const distPath = path.join(__dirname, "..", "dist");
+    app.use(express.static(distPath));
+
+    app.get("*", (req, res) => {
+        res.sendFile(path.join(distPath, "index.html"));
+    });
+}
