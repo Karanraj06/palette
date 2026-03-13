@@ -71,7 +71,7 @@ export default function Footer() {
 
             {/* Right: version/status */}
             <div style={{ color: "var(--dim)", opacity: 0.5 }}>
-                v1.0
+                v1.1
             </div>
         </footer>
     );

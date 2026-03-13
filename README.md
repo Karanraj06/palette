@@ -4,7 +4,7 @@ A typing game where you race against your own music. Upload any song, and the ap
 
 ## How It Works
 
-1. **Upload** an audio file (MP3, WAV, M4A, OGG, WEBM, FLAC — up to 25 MB)
+1. **Upload** an audio file (MP3, WAV, M4A, OGG, WEBM, FLAC — up to 4.5 MB)
 2. **Preview** the transcribed lyrics, edit mistakes, and pick a difficulty
 3. **Type** along as the song plays — your cursor (yellow) races the song cursor (blue)
 4. **Results** — WPM, accuracy, score, rank, and an error heatmap timeline
@@ -28,13 +28,14 @@ A typing game where you race against your own music. Upload any song, and the ap
 
 ## Tech Stack
 
-| Layer    | Tech                                     |
-|----------|------------------------------------------|
-| Frontend | React 19, Vite 7                         |
-| Backend  | Express 5, Node.js                       |
-| Lyrics transcription       | Azure OpenAI Whisper   |
-| Lyrics polish (opt) | Azure OpenAI GPT              |
-| Styling  | CSS-in-JS (inline styles)                |
+| Layer               | Tech                       |
+|---------------------|----------------------------|
+| Frontend            | React 19, Vite 7           |
+| Backend             | Express 5, Node.js         |
+| Lyrics transcription| Azure OpenAI Whisper       |
+| Lyrics polish (opt) | Azure OpenAI GPT           |
+| Styling             | CSS-in-JS (inline styles)  |
+| Deployment          | Vercel                     |
 
 ## Prerequisites
 
@@ -92,16 +93,16 @@ palette/
 └── vite.config.js                   # Vite config with /api proxy to :3001
 ```
 
-## API Endpoints
+## API
 
 | Method | Endpoint          | Description                    |
 |--------|-------------------|--------------------------------|
 | POST   | `/api/transcribe` | Upload audio → get lyrics JSON |
-| GET    | `/api/health`     | Server health check            |
 
 ### `POST /api/transcribe`
 
 - **Body**: `multipart/form-data` with field `audio`
+- **Limits**: Max 4.5 MB, audio files only (MP3, WAV, M4A, OGG, WEBM, FLAC)
 - **Returns**: `{ fullText, words, segments, charTimeline, duration, detectedLanguage, polishWarning }`
 
 ## License
