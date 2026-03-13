@@ -23,8 +23,8 @@ const AZURE_API_VERSION = process.env.AZURE_OPENAI_API_VERSION || "2024-06-01";
 
 // GPT config for lyrics polish (optional — skipped if not configured)
 const GPT_DEPLOYMENT = process.env.AZURE_OPENAI_GPT_DEPLOYMENT || "";
-const GPT_API_KEY = process.env.AZURE_OPENAI_GPT_API_KEY || AZURE_API_KEY; // Falls back to Whisper key
-const GPT_ENDPOINT = (process.env.AZURE_OPENAI_GPT_ENDPOINT || AZURE_ENDPOINT).replace(/\/+$/, ""); // Falls back to Whisper endpoint
+const GPT_API_KEY = process.env.AZURE_OPENAI_GPT_API_KEY || AZURE_API_KEY;
+const GPT_ENDPOINT = (process.env.AZURE_OPENAI_GPT_ENDPOINT || AZURE_ENDPOINT).replace(/\/+$/, "");
 const GPT_API_VERSION = process.env.AZURE_OPENAI_GPT_API_VERSION || "2024-06-01";
 
 if (!AZURE_API_KEY || !AZURE_ENDPOINT) {
@@ -38,12 +38,13 @@ const WHISPER_URL = `${AZURE_ENDPOINT}/openai/deployments/${AZURE_DEPLOYMENT}/au
 
 app.use(express.json());
 
+// ── Multer storage config ──────────────────────────────────────────────────
 // Vercel only allows writes to /tmp. os.tmpdir() works everywhere.
 const storage = multer.diskStorage({
     destination: (req, file, cb) => cb(null, os.tmpdir()),
     filename: (req, file, cb) => {
         const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
-        cb(null, uniqueSuffix + path.extname(file.originalname));
+        cb(null, uniqueSuffix + path.extname(file.originalname).toLowerCase());
     },
 });
 
@@ -59,14 +60,12 @@ const upload = multer({
 });
 
 // ── GPT lyrics polish helper ────────────────────────────────────────────────
-async function polishLyrics(words, fullText) {
+async function polishLyrics(words) {
     if (!GPT_DEPLOYMENT) {
         return { polishedWords: null, polishWarning: null };
     }
 
-    // Use GPT-specific endpoint and key (may differ from Whisper resource)
     const GPT_URL = `${GPT_ENDPOINT}/openai/deployments/${GPT_DEPLOYMENT}/chat/completions?api-version=${GPT_API_VERSION}`;
-
     const wordList = words.map((w) => w.word);
 
     try {
@@ -97,7 +96,7 @@ Return ONLY a JSON array of strings with the corrected words. No explanation.`
             max_tokens: 4000,
         }, {
             headers: {
-                "api-key": GPT_API_KEY,  // Uses GPT-specific key
+                "api-key": GPT_API_KEY,
                 "Content-Type": "application/json",
             },
             timeout: 30000,
@@ -122,7 +121,6 @@ Return ONLY a JSON array of strings with the corrected words. No explanation.`
             };
         }
 
-        // Build polished words array with original timestamps
         const polishedWords = words.map((w, i) => ({
             word: String(polished[i]),
             start: w.start,
@@ -140,162 +138,164 @@ Return ONLY a JSON array of strings with the corrected words. No explanation.`
 }
 
 // ── POST /api/transcribe ───────────────────────────────────────────────────
-app.post("/api/transcribe", upload.single("audio"), async (req, res) => {
-    if (!req.file) {
-        return res.status(400).json({ error: "No audio file provided" });
-    }
-
-    const filePath = req.file.path;
-
-    try {
-        let transcription = null;
-
-        for (let attempt = 1; attempt <= 3; attempt++) {
-            try {
-                const form = new FormData();
-                form.append("file", fs.createReadStream(filePath), {
-                    filename: `audio${path.extname(req.file.originalname).toLowerCase()}`,
-                    contentType: req.file.mimetype,
-                });
-                form.append("response_format", "verbose_json");
-                form.append("timestamp_granularities[]", "word");
-                form.append("timestamp_granularities[]", "segment");
-                // No language param — let Whisper auto-detect
-
-                console.log(`📤 Attempt ${attempt}/3 → ${WHISPER_URL}`);
-
-                const response = await axios.post(WHISPER_URL, form, {
-                    headers: {
-                        ...form.getHeaders(),
-                        "api-key": AZURE_API_KEY,
-                    },
-                    maxContentLength: 30 * 1024 * 1024,
-                    maxBodyLength: 30 * 1024 * 1024,
-                    timeout: 180000,
-                });
-
-                transcription = response.data;
-                break;
-            } catch (error) {
-                if (error.response?.status === 429 && attempt < 3) {
-                    const wait = parseInt(error.response.headers?.["retry-after"], 10) || 25;
-                    console.log(`⏳ Rate limited. Waiting ${wait}s...`);
-                    await new Promise((r) => setTimeout(r, wait * 1000));
-                    continue;
-                }
-                throw error;
+app.post("/api/transcribe", (req, res) => {
+    upload.single("audio")(req, res, async (err) => {
+        // ── Multer errors ──────────────────────────────────────────────
+        if (err instanceof multer.MulterError) {
+            if (err.code === "LIMIT_FILE_SIZE") {
+                return res.status(413).json({ error: "File too large. Maximum size is 25MB." });
             }
+            return res.status(400).json({ error: err.message });
+        }
+        if (err) {
+            return res.status(400).json({ error: err.message });
         }
 
-        if (!transcription) throw new Error("All retry attempts exhausted");
+        if (!req.file) {
+            return res.status(400).json({ error: "No audio file provided" });
+        }
 
-        // Detected language from Whisper
-        const detectedLanguage = transcription.language || "en";
+        const filePath = req.file.path;
 
-        // ── Extract words ──────────────────────────────────────────────────
-        let words = [];
-        if (transcription.words && transcription.words.length > 0) {
-            words = transcription.words.map((w) => ({
-                word: w.word, start: w.start, end: w.end,
-            }));
-        } else if (transcription.segments) {
-            for (const seg of transcription.segments) {
-                if (seg.words) {
-                    for (const w of seg.words) {
-                        words.push({ word: w.word, start: w.start, end: w.end });
+        try {
+            let transcription = null;
+
+            for (let attempt = 1; attempt <= 3; attempt++) {
+                try {
+                    const form = new FormData();
+                    form.append("file", fs.createReadStream(filePath), {
+                        filename: `audio${path.extname(req.file.originalname).toLowerCase()}`,
+                        contentType: req.file.mimetype,
+                    });
+                    form.append("response_format", "verbose_json");
+                    form.append("timestamp_granularities[]", "word");
+                    form.append("timestamp_granularities[]", "segment");
+
+                    const response = await axios.post(WHISPER_URL, form, {
+                        headers: {
+                            ...form.getHeaders(),
+                            "api-key": AZURE_API_KEY,
+                        },
+                        maxContentLength: 30 * 1024 * 1024,
+                        maxBodyLength: 30 * 1024 * 1024,
+                        timeout: 180000,
+                    });
+
+                    transcription = response.data;
+                    break;
+                } catch (error) {
+                    if (error.response?.status === 429 && attempt < 3) {
+                        const wait = parseInt(error.response.headers?.["retry-after"], 10) || 25;
+                        console.log(`⏳ Rate limited. Waiting ${wait}s...`);
+                        await new Promise((r) => setTimeout(r, wait * 1000));
+                        continue;
+                    }
+                    throw error;
+                }
+            }
+
+            if (!transcription) throw new Error("All retry attempts exhausted");
+
+            const detectedLanguage = transcription.language || "en";
+
+            // ── Extract words ──────────────────────────────────────────────
+            let words = [];
+            if (transcription.words && transcription.words.length > 0) {
+                words = transcription.words.map((w) => ({
+                    word: w.word, start: w.start, end: w.end,
+                }));
+            } else if (transcription.segments) {
+                for (const seg of transcription.segments) {
+                    if (seg.words) {
+                        for (const w of seg.words) {
+                            words.push({ word: w.word, start: w.start, end: w.end });
+                        }
                     }
                 }
             }
-        }
 
-        const segments = (transcription.segments || []).map((seg) => ({
-            text: seg.text.trim(), start: seg.start, end: seg.end,
-        }));
+            const segments = (transcription.segments || []).map((seg) => ({
+                text: seg.text.trim(), start: seg.start, end: seg.end,
+            }));
 
-        // ── GPT polish (optional) ──────────────────────────────────────────
-        const { polishedWords, polishWarning } = await polishLyrics(words, transcription.text);
-        const finalWords = polishedWords || words;
+            // ── GPT polish (optional) ──────────────────────────────────────
+            const { polishedWords, polishWarning } = await polishLyrics(words);
+            const finalWords = polishedWords || words;
 
-        const fullText = finalWords.map((w) => w.word).join(" ");
+            const fullText = finalWords.map((w) => w.word).join(" ");
 
-        // ── Character-level timeline ───────────────────────────────────────
-        const charTimeline = [];
-        for (const word of finalWords) {
-            const dur = word.end - word.start;
-            for (let i = 0; i < word.word.length; i++) {
-                const frac = word.word.length > 1 ? i / (word.word.length - 1) : 0;
+            // ── Character-level timeline ───────────────────────────────────
+            const charTimeline = [];
+            for (const word of finalWords) {
+                const dur = word.end - word.start;
+                for (let i = 0; i < word.word.length; i++) {
+                    const frac = word.word.length > 1 ? i / (word.word.length - 1) : 0;
+                    charTimeline.push({
+                        char: word.word[i],
+                        time: word.start + dur * frac,
+                        wordStart: word.start, wordEnd: word.end,
+                    });
+                }
                 charTimeline.push({
-                    char: word.word[i],
-                    time: word.start + dur * frac,
+                    char: " ", time: word.end,
                     wordStart: word.start, wordEnd: word.end,
                 });
             }
-            charTimeline.push({
-                char: " ", time: word.end,
-                wordStart: word.start, wordEnd: word.end,
-            });
-        }
-        if (charTimeline.length > 0 && charTimeline.at(-1).char === " ") {
-            charTimeline.pop();
-        }
-
-        const duration = transcription.duration ||
-            (finalWords.length > 0 ? finalWords.at(-1).end : 0);
-
-        console.log(`✅ ${finalWords.length} words, ${duration.toFixed(1)}s, lang=${detectedLanguage}`);
-        res.json({
-            fullText,
-            words: finalWords,
-            segments,
-            charTimeline,
-            duration,
-            detectedLanguage,
-            polishWarning,
-        });
-
-    } catch (error) {
-        console.error("❌ Error:", error.response?.data || error.message);
-
-        let errorMessage = "Transcription failed";
-        let statusCode = 500;
-
-        if (error.response) {
-            statusCode = error.response.status;
-            const errData = error.response.data?.error || error.response.data;
-
-            if (statusCode === 401) {
-                errorMessage = "API key is invalid. Check AZURE_OPENAI_API_KEY in .env.";
-            } else if (errData?.code === "DeploymentNotFound" || statusCode === 404) {
-                errorMessage =
-                    "Whisper deployment not found. Make sure you have a dedicated Azure OpenAI " +
-                    "resource (not a multi-service AI resource) with a 'whisper' deployment.";
-            } else if (statusCode === 429) {
-                errorMessage = "Rate limited. Wait ~30 seconds and try again.";
-            } else {
-                errorMessage = errData?.message || JSON.stringify(errData);
+            if (charTimeline.length > 0 && charTimeline.at(-1).char === " ") {
+                charTimeline.pop();
             }
-        }
 
-        res.status(statusCode >= 400 ? statusCode : 500).json({
-            error: errorMessage,
-        });
-    } finally {
-        try { fs.unlinkSync(filePath); } catch { }
-    }
+            const duration = transcription.duration ||
+                (finalWords.length > 0 ? finalWords.at(-1).end : 0);
+
+            console.log(`✅ ${finalWords.length} words, ${duration.toFixed(1)}s, lang=${detectedLanguage}`);
+            res.json({
+                fullText,
+                words: finalWords,
+                segments,
+                charTimeline,
+                duration,
+                detectedLanguage,
+                polishWarning,
+            });
+
+        } catch (error) {
+            console.error("❌ Error:", error.response?.data || error.message);
+
+            let errorMessage = "Transcription failed";
+            let statusCode = 500;
+
+            if (error.response) {
+                statusCode = error.response.status;
+                const errData = error.response.data?.error || error.response.data;
+
+                if (statusCode === 401) {
+                    errorMessage = "API key is invalid.";
+                } else if (errData?.code === "DeploymentNotFound" || statusCode === 404) {
+                    errorMessage = "Transcription service not available. Please try again later.";
+                } else if (statusCode === 429) {
+                    errorMessage = "Rate limited. Wait ~30 seconds and try again.";
+                } else {
+                    errorMessage = "Transcription failed. Please try again.";
+                }
+            }
+
+            res.status(statusCode >= 400 ? statusCode : 500).json({
+                error: errorMessage,
+            });
+        } finally {
+            try { fs.unlinkSync(filePath); } catch { }
+        }
+    });
 });
 
+// ── Server startup ─────────────────────────────────────────────────────────
 app.listen(PORT, () => {
-    console.log(`Palette ~ server running on http://localhost:${PORT}`);
-    if (GPT_DEPLOYMENT) {
-        console.log(`GPT polish: enabled`);
-        if (GPT_ENDPOINT !== AZURE_ENDPOINT) {
-            console.log(`GPT uses separate resource`);
-        }
-    } else {
-        console.log(`GPT polish: disabled (set AZURE_OPENAI_GPT_DEPLOYMENT to enable)`);
-    }
+    console.log(`🎵 Song Game server running on http://localhost:${PORT}`);
+    console.log(`   GPT polish: ${GPT_DEPLOYMENT ? "enabled" : "disabled"}`);
 });
 
+// ── Production static file serving ─────────────────────────────────────────
 if (process.env.NODE_ENV === "production") {
     const distPath = path.join(__dirname, "..", "dist");
     app.use(express.static(distPath));
