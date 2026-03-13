@@ -605,13 +605,11 @@ export default function SongTypingView({ songData, onGameComplete, difficulty, o
                         if (wi > 0) {
                             const spaceIdx = charIdx++;
                             const spaceState = charStates[spaceIdx];
-                            const isSongAhead = started && songCursor > spaceIdx && spaceState === CHAR_STATE.IDLE;
                             elements.push(
                                 <span key={`s${spaceIdx}`} data-idx={spaceIdx} style={{
                                     ...charStyle,
                                     ...(spaceState === CHAR_STATE.CORRECT ? charCorrectStyle : {}),
                                     ...(spaceState === CHAR_STATE.WRONG ? charWrongStyle : {}),
-                                    ...(isSongAhead ? { background: "rgba(79, 195, 247, 0.08)" } : {}),
                                 }}>{" "}</span>
                             );
                         }

@@ -16,7 +16,7 @@ export default function LyricsPreview({
 
     const previewText = useMemo(() => {
         const diff = DIFFICULTIES[difficulty];
-        let text = editedLyrics;
+        let text = editedLyrics.replace(/\s+/g, " ").trim();
         if (diff?.ignorePunctuation) {
             text = text.replace(/[^\w\s]/g, "");
         }
