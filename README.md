@@ -20,8 +20,6 @@ A typing game where you race against your own music. Upload any song, and the ap
 - **Spotify-style audio player** — play/pause, seekable progress bar, time display
 - **Scoring system** — 0–1000 score with letter ranks (S through F) based on WPM, accuracy, and speed
 - **Error heatmap timeline** — visual breakdown of where you made mistakes across the song
-- **End race early** — quit mid-song with `Ctrl+Enter` or the "end race" button; results show completion %
-- **Keyboard shortcuts** — `Esc` to reset/go back, `Ctrl+Backspace` to delete a word, `Ctrl+Enter` to end early
 - **Auto-language detection** — Whisper detects the song's language automatically (no hardcoded English)
 - **Optional GPT lyrics polish** — AI post-processing to fix transcription errors and transliterate non-Latin scripts (requires GPT deployment)
 - **LCS-based timeline alignment** — if you edit the lyrics, character timestamps are re-aligned using Longest Common Subsequence matching so the song cursor stays in sync

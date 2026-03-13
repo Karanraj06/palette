@@ -38,6 +38,7 @@ export default function SongUpload({ onTranscriptionComplete }) {
 
             const response = await fetch("/api/transcribe", {
                 method: "POST",
+                headers: { "X-Requested-With": "palette-client" },
                 body: formData,
             });
 

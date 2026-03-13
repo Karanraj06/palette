@@ -38,6 +38,8 @@ export default function SongTypingView({ songData, onGameComplete, difficulty, o
     const [duration, setDuration] = useState(songDuration || 0);
     const [isPlaying, setIsPlaying] = useState(false);
     const [isSeeking, setIsSeeking] = useState(false);
+    const [showResumeHint, setShowResumeHint] = useState(false);
+    const resumeHintTimeoutRef = useRef(null);
 
     // ── Refs ──────────────────────────────────────────────────────────────────
     const audioRef = useRef(null);
@@ -55,6 +57,7 @@ export default function SongTypingView({ songData, onGameComplete, difficulty, o
     const lyricsRef = useRef(lyricsText);
     const startTimeRef = useRef(null);
     const difficultyRef = useRef(difficulty);
+    const isPlayingRef = useRef(false);
 
     userCursorRef.current = userCursor;
     charStatesRef.current = charStates;
@@ -63,6 +66,7 @@ export default function SongTypingView({ songData, onGameComplete, difficulty, o
     finishedRef.current = finished;
     lyricsRef.current = lyricsText;
     difficultyRef.current = difficulty;
+    isPlayingRef.current = isPlaying;
 
     // ── Character → timestamp map (LCS-based alignment) ──────────────────────
     const charTimeMap = useMemo(() => {
@@ -255,8 +259,10 @@ export default function SongTypingView({ songData, onGameComplete, difficulty, o
         (e) => {
             if (finishedRef.current) return;
 
-            const isCtrlBackspace =
-                (e.ctrlKey || e.metaKey) && e.key === "Backspace";
+            const isMac = navigator.userAgent.includes("Mac");
+            const isDeleteWord = e.key === "Backspace" && (
+                isMac ? e.altKey : e.ctrlKey
+            );
             const isCtrlEnter =
                 (e.ctrlKey || e.metaKey) && e.key === "Enter";
 
@@ -269,7 +275,7 @@ export default function SongTypingView({ songData, onGameComplete, difficulty, o
                 return;
             }
 
-            if ((e.metaKey || e.ctrlKey || e.altKey) && !isCtrlBackspace) return;
+            if ((e.metaKey || e.ctrlKey || e.altKey) && !isDeleteWord) return;
 
             // ── Escape → back to preview (if not started) or reset (if started)
             if (e.key === "Escape") {
@@ -281,8 +287,8 @@ export default function SongTypingView({ songData, onGameComplete, difficulty, o
                 return;
             }
 
-            // ── Ctrl+Backspace → delete whole word
-            if (isCtrlBackspace) {
+            // ── Delete whole word
+            if (isDeleteWord) {
                 e.preventDefault();
                 const c = userCursorRef.current;
                 if (c === 0) return;
@@ -337,6 +343,15 @@ export default function SongTypingView({ songData, onGameComplete, difficulty, o
                 startGame();
             }
 
+            // ── Block typing while paused (after game has started) ────────
+            if (startedRef.current && !isPlayingRef.current) {
+                // Show "resume to continue" hint
+                setShowResumeHint(true);
+                if (resumeHintTimeoutRef.current) clearTimeout(resumeHintTimeoutRef.current);
+                resumeHintTimeoutRef.current = setTimeout(() => setShowResumeHint(false), 2000);
+                return;
+            }
+
             const c = userCursorRef.current;
             if (c >= lyricsRef.current.length) return;
 
@@ -378,6 +393,7 @@ export default function SongTypingView({ songData, onGameComplete, difficulty, o
     useEffect(() => {
         return () => {
             if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
+            if (resumeHintTimeoutRef.current) clearTimeout(resumeHintTimeoutRef.current);
         };
     }, []);
 
@@ -571,15 +587,13 @@ export default function SongTypingView({ songData, onGameComplete, difficulty, o
                 </span>
             </div>
 
-            {/* ── Start hint ──────────────────────────────────────────────── */}
-            {!started && (
-                <div style={{
-                    textAlign: "center", fontSize: 12, color: TOKENS.dim,
-                    letterSpacing: "0.1em", marginBottom: 12, animation: "pulse 2s ease-in-out infinite",
-                }}>
-                    start typing to begin playback
-                </div>
-            )}
+            {/* ── Hint text ──────────────────────────────────────────────── */}
+            <div style={{
+                textAlign: "center", fontSize: 12, color: TOKENS.dim,
+                letterSpacing: "0.1em", marginBottom: 12, animation: "pulse 2s ease-in-out infinite", height: 16
+            }}>
+                {!started ? "start typing to begin playback" : showResumeHint && !isPlaying ? "resume song to continue typing" : ""}
+            </div>
 
             {/* ── Lyrics with dual cursors ────────────────────────────────── */}
             <div ref={textRef} className="typing-text" style={{
@@ -641,8 +655,7 @@ export default function SongTypingView({ songData, onGameComplete, difficulty, o
                 ) : (
                     <>
                         esc — <span style={{ color: TOKENS.yellow }}>reset</span>
-                        &nbsp;&nbsp;·&nbsp;&nbsp; ctrl+⌫ — <span style={{ color: TOKENS.yellow }}>delete word</span>
-                        &nbsp;&nbsp;·&nbsp;&nbsp; ctrl+↵ — <span style={{ color: TOKENS.red }}>end race</span>
+                        &nbsp;&nbsp;·&nbsp;&nbsp; {navigator.userAgent.includes("Mac") ? "⌘" : "ctrl"}+↵ — <span style={{ color: TOKENS.red }}>end race</span>
                     </>
                 )}
             </div>

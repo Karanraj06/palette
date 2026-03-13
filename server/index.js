@@ -38,6 +38,33 @@ const WHISPER_URL = `${AZURE_ENDPOINT}/openai/deployments/${AZURE_DEPLOYMENT}/au
 
 app.use(express.json());
 
+const ALLOWED_ORIGINS = new Set([
+    "https://get-palette.vercel.app",
+]);
+
+if (process.env.NODE_ENV !== "production") {
+    ALLOWED_ORIGINS.add("http://localhost:5173");
+}
+
+app.use("/api", (req, res, next) => {
+    const origin = req.get("Origin");
+
+    if (!origin || !ALLOWED_ORIGINS.has(origin)) {
+        return res.status(403).json({ error: "Forbidden" });
+    }
+
+    if (req.get("X-Requested-With") !== "palette-client") {
+        return res.status(403).json({ error: "Forbidden" });
+    }
+
+    res.setHeader("Access-Control-Allow-Origin", origin);
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type, X-Requested-With");
+    res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
+    if (req.method === "OPTIONS") return res.status(204).end();
+
+    next();
+});
+
 // ── Multer storage config ──────────────────────────────────────────────────
 // Vercel only allows writes to /tmp. os.tmpdir() works everywhere.
 const storage = multer.diskStorage({

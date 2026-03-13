@@ -21,9 +21,6 @@ export default function Footer() {
                 <span>
                     <kbd style={kbdStyle}>esc</kbd> reset
                 </span>
-                <span>
-                    <kbd style={kbdStyle}>ctrl</kbd>+<kbd style={kbdStyle}>⌫</kbd> delete word
-                </span>
             </div>
 
             {/* Center: branding */}
