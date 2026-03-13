@@ -32,8 +32,7 @@ export default function Footer() {
                     gap: 6,
                 }}
             >
-                <span style={{ opacity: 0.6 }}>♪</span>
-                <span>Palette</span>
+                <span>Palette ~</span>
                 <span style={{ opacity: 0.4 }}>·</span>
                 <a
                     href="https://github.com/Karanraj06/palette"

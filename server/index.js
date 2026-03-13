@@ -318,8 +318,8 @@ app.post("/api/transcribe", (req, res) => {
 
 // ── Server startup ─────────────────────────────────────────────────────────
 app.listen(PORT, () => {
-    console.log(`🎵 Song Game server running on http://localhost:${PORT}`);
-    console.log(`   GPT polish: ${GPT_DEPLOYMENT ? "enabled" : "disabled"}`);
+    console.log(`Palette ~ server running on http://localhost:${PORT}`);
+    console.log(`GPT polish: ${GPT_DEPLOYMENT ? "enabled" : "disabled"}`);
 });
 
 // ── Production static file serving ─────────────────────────────────────────

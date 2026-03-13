@@ -39,7 +39,7 @@ export default function SongTypingView({ songData, onGameComplete, difficulty, o
     const [isPlaying, setIsPlaying] = useState(false);
     const [isSeeking, setIsSeeking] = useState(false);
     const [showResumeHint, setShowResumeHint] = useState(false);
-    const resumeHintTimeoutRef = useRef(null);
+    const [syncMode, setSyncMode] = useState(true);
 
     // ── Refs ──────────────────────────────────────────────────────────────────
     const audioRef = useRef(null);
@@ -47,6 +47,8 @@ export default function SongTypingView({ songData, onGameComplete, difficulty, o
     const userCursorElRef = useRef(null);
     const songCursorElRef = useRef(null);
     const animFrameRef = useRef(null);
+    const resumeHintTimeoutRef = useRef(null);
+    const syncModeRef = useRef(true);
 
     // Mutable refs for use inside event handlers (avoids stale closures)
     const userCursorRef = useRef(0);
@@ -67,6 +69,7 @@ export default function SongTypingView({ songData, onGameComplete, difficulty, o
     lyricsRef.current = lyricsText;
     difficultyRef.current = difficulty;
     isPlayingRef.current = isPlaying;
+    syncModeRef.current = syncMode;
 
     // ── Character → timestamp map (LCS-based alignment) ──────────────────────
     const charTimeMap = useMemo(() => {
@@ -251,6 +254,7 @@ export default function SongTypingView({ songData, onGameComplete, difficulty, o
         setErrors(0);
         setCurrentTime(0);
         setIsPlaying(false);
+        setSyncMode(true);
         startTimeRef.current = null;
     }, []);
 
@@ -344,7 +348,7 @@ export default function SongTypingView({ songData, onGameComplete, difficulty, o
             }
 
             // ── Block typing while paused (after game has started) ────────
-            if (startedRef.current && !isPlayingRef.current) {
+            if (startedRef.current && !isPlayingRef.current && syncModeRef.current) {
                 // Show "resume to continue" hint
                 setShowResumeHint(true);
                 if (resumeHintTimeoutRef.current) clearTimeout(resumeHintTimeoutRef.current);
@@ -585,6 +589,20 @@ export default function SongTypingView({ songData, onGameComplete, difficulty, o
                 <span style={{ fontSize: 11, color: TOKENS.dim, fontFamily: "'Roboto Mono', monospace", minWidth: 36, flexShrink: 0 }}>
                     {formatTime(duration)}
                 </span>
+                <button
+                    onClick={() => setSyncMode((s) => !s)}
+                    title={syncMode ? "Sync mode: typing only while playing" : "Free mode: type anytime"}
+                    style={{
+                        background: "none", border: `1px solid ${syncMode ? "var(--border)" : TOKENS.yellow}`,
+                        color: syncMode ? TOKENS.dim : TOKENS.yellow,
+                        fontFamily: "'Roboto Mono', monospace", fontSize: 9,
+                        padding: "3px 8px", borderRadius: 4, cursor: "pointer",
+                        letterSpacing: "0.05em", flexShrink: 0,
+                        transition: "all 0.2s ease",
+                    }}
+                >
+                    {syncMode ? "sync" : "free"}
+                </button>
             </div>
 
             {/* ── Hint text ──────────────────────────────────────────────── */}
@@ -592,7 +610,7 @@ export default function SongTypingView({ songData, onGameComplete, difficulty, o
                 textAlign: "center", fontSize: 12, color: TOKENS.dim,
                 letterSpacing: "0.1em", marginBottom: 12, animation: "pulse 2s ease-in-out infinite", height: 16
             }}>
-                {!started ? "start typing to begin playback" : showResumeHint && !isPlaying ? "resume song to continue typing" : ""}
+                {!started ? "start typing to begin playback" : showResumeHint && !isPlaying ? "resume song to continue typing · or switch to free mode" : ""}
             </div>
 
             {/* ── Lyrics with dual cursors ────────────────────────────────── */}
