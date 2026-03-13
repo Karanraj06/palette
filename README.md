@@ -1,4 +1,4 @@
-# song-game
+# Palette
 
 A typing game where you race against your own music. Upload any song, and the app transcribes the lyrics with Azure OpenAI Whisper, then challenges you to type along as the song plays. Two cursors — yours and the song's — race through the lyrics in real time.
 
@@ -62,7 +62,7 @@ Open [http://localhost:5173](http://localhost:5173) in your browser.
 ## Project Structure
 
 ```
-song-game/
+palette/
 ├── server/
 │   └── index.js              # Express API — Whisper transcription + GPT polish
 ├── src/

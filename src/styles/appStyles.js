@@ -44,7 +44,7 @@ export const logoStyle = {
     fontFamily: "'Roboto Mono', 'JetBrains Mono', monospace",
     color: TOKENS.yellow,
     letterSpacing: "normal",
-    textTransform: "lowercase",
+    // textTransform: "lowercase",
     marginRight: 8,
     display: "flex",
     alignItems: "center",

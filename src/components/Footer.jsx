@@ -36,10 +36,10 @@ export default function Footer() {
                 }}
             >
                 <span style={{ opacity: 0.6 }}>♪</span>
-                <span>song game</span>
+                <span>Palette</span>
                 <span style={{ opacity: 0.4 }}>·</span>
                 <a
-                    href="https://github.com/Karanraj06/song-game"
+                    href="https://github.com/Karanraj06/palette"
                     target="_blank"
                     rel="noreferrer"
                     style={{

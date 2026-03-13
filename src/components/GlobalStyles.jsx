@@ -1,7 +1,7 @@
 // GlobalStyles.jsx -- Injected <style> tag for CSS animations, themes, cursor, etc.
 export default function GlobalStyles() {
-    return (
-        <style>{`
+  return (
+    <style>{`
       @import url('https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@300;400;500;700&family=JetBrains+Mono:wght@300;400;500;700&display=swap');
 
       :root {
@@ -28,19 +28,51 @@ export default function GlobalStyles() {
         --btnActiveColor: #d1d0c5;
       }
 
+      .light {
+        --bg: #F4F4F5;
+        --surface: #E4E4E7;
+        --border: #D4D4D8;
+        --borderLight: #A1A1AA;
+        --navBorder: rgba(0, 0, 0, 0.08);
+        --text: #18181B;
+        --dim: #71717A;
+        --dimLight: #52525B;
+        --dimDark: #A1A1AA;
+        --dimMid: #52525B;
+        --muted: #D4D4D8;
+        --statText: #3F3F46;
+        --green: #16a34a;
+        --red: #EF4444;
+        --yellow: #CA8A04;
+        --charNeutral: #A1A1AA;
+        --charCorrect: #3F3F46;
+        --charWrongDeco: rgba(239, 68, 68, 0.4);
+        --btnHoverColor: #CA8A04;
+        --btnHoverBg: rgba(202, 138, 4, 0.08);
+        --btnActiveColor: #3F3F46;
+      }
+
       * { box-sizing: border-box; margin: 0; padding: 0; }
+
+      html {
+        scroll-behavior: smooth;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+        background: var(--bg);
+      }
 
       body {
         background: var(--bg);
         color: var(--text);
         overflow: hidden;
+        transition: background 0.4s ease, color 0.4s ease;
       }
 
       /* Scrollbar */
       ::-webkit-scrollbar { width: 4px; }
       ::-webkit-scrollbar-track { background: transparent; }
-      ::-webkit-scrollbar-thumb { background: #3a3a3a; border-radius: 2px; }
-      ::-webkit-scrollbar-thumb:hover { background: #555; }
+      ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+      ::-webkit-scrollbar-thumb:hover { background: var(--dim); }
 
       /* Smooth cursor */
       .smooth-cursor {
@@ -48,7 +80,7 @@ export default function GlobalStyles() {
         top: 0;
         left: 0;
         width: 2.5px;
-        background: #E2B715;
+        background: var(--yellow);
         border-radius: 2px;
         pointer-events: none;
         z-index: 10;
@@ -94,14 +126,19 @@ export default function GlobalStyles() {
 
       /* Restart button */
       .restart-btn:hover {
-        color: #E2B715 !important;
+        color: var(--yellow) !important;
         transform: rotate(-45deg);
       }
 
       /* Focus */
       button:focus-visible {
-        outline: 2px solid #E2B715;
+        outline: 2px solid var(--yellow);
         outline-offset: 2px;
+      }
+
+      button:focus,
+      button:focus-visible {
+        outline: none;
       }
 
       /* ── Range slider (Spotify-style seekbar) ─────────────────────── */
@@ -119,7 +156,7 @@ export default function GlobalStyles() {
         width: 12px;
         height: 12px;
         border-radius: 50%;
-        background: #E2B715;
+        background: var(--yellow);
         cursor: pointer;
         border: none;
         box-shadow: 0 0 4px rgba(226, 183, 21, 0.4);
@@ -135,7 +172,7 @@ export default function GlobalStyles() {
         width: 12px;
         height: 12px;
         border-radius: 50%;
-        background: #E2B715;
+        background: var(--yellow);
         cursor: pointer;
         border: none;
         box-shadow: 0 0 4px rgba(226, 183, 21, 0.4);
@@ -147,16 +184,16 @@ export default function GlobalStyles() {
       }
 
       input[type="range"]:disabled::-webkit-slider-thumb {
-        background: #555;
+        background: var(--dim);
         cursor: default;
         box-shadow: none;
       }
 
       input[type="range"]:disabled::-moz-range-thumb {
-        background: #555;
+        background: var(--dim);
         cursor: default;
         box-shadow: none;
       }
     `}</style>
-    );
+  );
 }

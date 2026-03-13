@@ -21,8 +21,8 @@ export default function SongUpload({ onTranscriptionComplete }) {
             return;
         }
 
-        if (file.size > 250 * 1024 * 1024) {
-            setError("File size must be under 250MB");
+        if (file.size > 4.5 * 1024 * 1024) {
+            setError("File size must be under 4.5MB");
             return;
         }
 
@@ -61,7 +61,11 @@ export default function SongUpload({ onTranscriptionComplete }) {
                 fileName: file.name.replace(/\.[^/.]+$/, ""),
             });
         } catch (err) {
-            setError(err.message || "Something went wrong. Please try again.");
+            if (err.message?.includes("413") || err.message?.includes("PAYLOAD_TOO_LARGE")) {
+                setError("File too large for the server. Please upload a file under 4.5MB.");
+            } else {
+                setError(err.message || "Something went wrong. Please try again.");
+            }
         } finally {
             setUploading(false);
             setProgress("");
@@ -85,7 +89,7 @@ export default function SongUpload({ onTranscriptionComplete }) {
                     marginBottom: 8,
                 }}
             >
-                ♪ song game
+                Palette ~
             </h1>
             <p
                 style={{
@@ -96,7 +100,7 @@ export default function SongUpload({ onTranscriptionComplete }) {
                     lineHeight: 1.6,
                 }}
             >
-                Upload a song · AI extracts the lyrics · Type along as the music plays
+                Upload a song · AI extracts the lyrics · Type as the music plays
             </p>
 
             <div
@@ -167,7 +171,7 @@ export default function SongUpload({ onTranscriptionComplete }) {
                                 letterSpacing: "0.05em",
                             }}
                         >
-                            MP3, WAV, M4A, OGG, FLAC · Max 250MB
+                            MP3, WAV, M4A, OGG, FLAC · Max 4.5MB
                         </div>
                     </div>
                 )}

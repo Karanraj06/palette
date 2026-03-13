@@ -10,7 +10,7 @@ export const useTheme = () => useContext(ThemeContext);
 export function ThemeProvider({ children }) {
     // Read initial theme preference from local storage
     const [theme, setTheme] = useState(() => {
-        const savedTheme = localStorage.getItem("practiceTyping-theme");
+        const savedTheme = localStorage.getItem("palette-theme");
         if (savedTheme) return savedTheme;
 
         // Default to dark theme as requested
@@ -19,7 +19,7 @@ export function ThemeProvider({ children }) {
 
     useEffect(() => {
         // Save to local storage whenever theme changes
-        localStorage.setItem("practiceTyping-theme", theme);
+        localStorage.setItem("palette-theme", theme);
 
         // Toggle the .light class on document body or html
         if (theme === "light") {

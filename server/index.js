@@ -1,7 +1,6 @@
 // server/index.js -- Express backend for Azure OpenAI Whisper transcription + GPT polish
 import "dotenv/config";
 import express from "express";
-import cors from "cors";
 import multer from "multer";
 import axios from "axios";
 import FormData from "form-data";
@@ -37,7 +36,6 @@ if (!AZURE_API_KEY || !AZURE_ENDPOINT) {
 
 const WHISPER_URL = `${AZURE_ENDPOINT}/openai/deployments/${AZURE_DEPLOYMENT}/audio/transcriptions?api-version=${AZURE_API_VERSION}`;
 
-app.use(cors());
 app.use(express.json());
 
 // Vercel only allows writes to /tmp. os.tmpdir() works everywhere.
@@ -156,7 +154,7 @@ app.post("/api/transcribe", upload.single("audio"), async (req, res) => {
             try {
                 const form = new FormData();
                 form.append("file", fs.createReadStream(filePath), {
-                    filename: req.file.originalname,
+                    filename: `audio${path.extname(req.file.originalname).toLowerCase()}`,
                     contentType: req.file.mimetype,
                 });
                 form.append("response_format", "verbose_json");
@@ -280,32 +278,21 @@ app.post("/api/transcribe", upload.single("audio"), async (req, res) => {
 
         res.status(statusCode >= 400 ? statusCode : 500).json({
             error: errorMessage,
-            details: error.response?.data?.error?.message || error.message,
         });
     } finally {
         try { fs.unlinkSync(filePath); } catch { }
     }
 });
 
-app.get("/api/health", (req, res) => {
-    res.json({
-        status: "ok",
-        whisperUrl: WHISPER_URL,
-        gptEnabled: !!GPT_DEPLOYMENT,
-        gptSeparateResource: GPT_ENDPOINT !== AZURE_ENDPOINT,
-    });
-});
-
 app.listen(PORT, () => {
-    console.log(`🎵 Song Game server running on http://localhost:${PORT}`);
-    console.log(`   Whisper URL: ${WHISPER_URL}`);
+    console.log(`Palette ~ server running on http://localhost:${PORT}`);
     if (GPT_DEPLOYMENT) {
-        console.log(`   GPT polish: enabled (${GPT_ENDPOINT}/.../${GPT_DEPLOYMENT})`);
+        console.log(`GPT polish: enabled`);
         if (GPT_ENDPOINT !== AZURE_ENDPOINT) {
-            console.log(`   GPT uses separate resource`);
+            console.log(`GPT uses separate resource`);
         }
     } else {
-        console.log(`   GPT polish: disabled (set AZURE_OPENAI_GPT_DEPLOYMENT to enable)`);
+        console.log(`GPT polish: disabled (set AZURE_OPENAI_GPT_DEPLOYMENT to enable)`);
     }
 });
 
