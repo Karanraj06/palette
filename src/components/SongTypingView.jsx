@@ -69,6 +69,16 @@ export default function SongTypingView({ songData, onGameComplete, difficulty, o
         return alignEditedToTimeline(lyricsText, charTimeline);
     }, [lyricsText, charTimeline]);
 
+    // ── Compute song cursor from a given time ─────────────────────────────────
+    const computeSongCursor = useCallback((time) => {
+        let idx = 0;
+        for (let i = 0; i < charTimeMap.length; i++) {
+            if (charTimeMap[i] <= time) idx = i + 1;
+            else break;
+        }
+        return Math.min(idx, lyricsText.length);
+    }, [charTimeMap, lyricsText.length]);
+
     // ── Audio playback loop (runs independently of typing) ───────────────────
     const tickAudio = useCallback(() => {
         const audio = audioRef.current;
@@ -76,19 +86,12 @@ export default function SongTypingView({ songData, onGameComplete, difficulty, o
 
         const time = audio.currentTime;
         setCurrentTime(time);
-
-        // Compute song cursor from time
-        let idx = 0;
-        for (let i = 0; i < charTimeMap.length; i++) {
-            if (charTimeMap[i] <= time) idx = i + 1;
-            else break;
-        }
-        setSongCursor(Math.min(idx, lyricsText.length));
+        setSongCursor(computeSongCursor(time));
 
         if (!audio.paused && !audio.ended) {
             animFrameRef.current = requestAnimationFrame(tickAudio);
         }
-    }, [charTimeMap, lyricsText.length]);
+    }, [computeSongCursor]);
 
     // Start / resume the rAF loop whenever audio plays
     useEffect(() => {
@@ -174,7 +177,8 @@ export default function SongTypingView({ songData, onGameComplete, difficulty, o
         const newTime = parseFloat(e.target.value);
         audio.currentTime = newTime;
         setCurrentTime(newTime);
-    }, []);
+        setSongCursor(computeSongCursor(newTime));
+    }, [computeSongCursor]);
 
     // ── End game (supports both full completion and early exit) ───────────────
     const endGame = useCallback((isEarlyExit = false) => {
